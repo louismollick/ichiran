@@ -1,7 +1,28 @@
 version: "3"
 
+x-cloudmap:
+  PrivateNamespace:
+    ZoneName: ichiran
+
+x-vpc:
+  Properties:
+    DHCPOptions:
+      DomainName: ichiran
+
 services:
   pg:
+    ports:
+      - 5432:5432/tcp
+    image: ruiisuuu/ichiran_pg
+    x-ecs:
+      EnableExecuteCommand: true
+    x-network:
+      x-cloudmap: 
+        PrivateNamespace:
+          Port: 5432
+      Ingress:
+        Services:
+          - Name: main
     build:
       dockerfile: ./docker/postgres-dockerfile
       context: .
@@ -15,6 +36,11 @@ services:
       - ${PWD}/docker/pgdata:/var/lib/postgresql/data
 
   main:
+    image: ruiisuuu/ichiran_main
+    x-ecs:
+      EnableExecuteCommand: true
+    x-network:
+      x-cloudmap: PrivateNamespace
     build:
       dockerfile: ./docker/sbcl-dockerfile
       context: .

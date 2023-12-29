@@ -1,0 +1,4 @@
+#!/bin/bash
+
+set -e
+sbcl --core /root/ichiran.core --non-interactive --eval "(ql:quickload :ichiran/rest-api)" --eval "(ichiran/rest-api:start)"

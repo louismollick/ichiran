@@ -6,3 +6,5 @@ if [ ! -e /root/.initialized ] ; then
     set +e
     touch /root/.initialized;
 fi
+
+init-rest-api

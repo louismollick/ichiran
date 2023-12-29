@@ -55,6 +55,16 @@
   :entry-point "ichiran/cli::main"
   :components ((:file "cli")))
 
+(defsystem #:ichiran/rest-api
+  :serial t
+  :description "JSON Rest API for Ichiran"
+  :author "Timofei Shatrov <timofei.shatrov@example.com>"
+  :license "MIT"
+  :depends-on (#:ichiran
+               #:clack
+               )
+  :components ((:file "rest-api")))
+
 
 #+sb-core-compression
 (defmethod asdf:perform ((o asdf:image-op) (c asdf:system))
