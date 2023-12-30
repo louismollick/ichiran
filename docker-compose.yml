@@ -37,12 +37,6 @@ services:
   pg:
     ports:
       - 5432:5432/tcp
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready", "-h", "pg"]
-      interval: 1s
-      timeout: 30s
-      retries: 60
-      start_period: 30m # Postgres init script can take long time
     image: ruiisuuu/ichiran_pg
     x-ecs:
       EnableExecuteCommand: true
@@ -68,9 +62,6 @@ services:
     ports:
       - 5001:5001/tcp
     image: ruiisuuu/ichiran_main
-    depends_on: 
-      pg:
-        condition: service_healthy
     x-ecs:
       EnableExecuteCommand: true
     x-network:
