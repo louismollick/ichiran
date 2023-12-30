@@ -30,7 +30,7 @@ x-elbv2:
       - name: main:main
         port: 5001
         protocol: HTTP
-        healthcheck: 5001:HTTP:1:10:300:30:/:200
+        healthcheck: 5001:HTTP:2:10:300:30:/:200
 
 services:
   pg:
