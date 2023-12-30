@@ -1,7 +1,7 @@
 version: "3"
 
 x-cloudmap:
-  PrivateNamespace:
+  private-namespace:
     ZoneName: ichiran
 
 x-vpc:
@@ -9,17 +9,45 @@ x-vpc:
     DHCPOptions:
       DomainName: ichiran
 
+x-elbv2:
+  public-ingress:
+    Properties:
+      Scheme: internet-facing
+      Type: application
+    MacroParameters:
+      Ingress:
+        ExtSources:
+          - IPv4: 0.0.0.0/0
+            Name: Any
+            Description: Any
+    Listeners:
+      - Port: 80
+        Protocol: HTTP
+        Targets:
+          - name: main:main
+            access: /
+    Services:
+      - name: main:main
+        port: 5001
+        protocol: HTTP
+        healthcheck:
+          HealthCheckEnabled: false
+
 services:
   pg:
     ports:
       - 5432:5432/tcp
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready", "-h", "pg"]
+      interval: 1s
+      timeout: 30s
+      retries: 60
+      start_period: 30m # Postgres init script can take long time
     image: ruiisuuu/ichiran_pg
     x-ecs:
       EnableExecuteCommand: true
     x-network:
-      x-cloudmap: 
-        PrivateNamespace:
-          Port: 5432
+      x-cloudmap: private-namespace
       Ingress:
         Services:
           - Name: main
@@ -30,17 +58,23 @@ services:
         ICHIRAN_DB_URL: "https://github.com/tshatrov/ichiran/releases/download/ichiran-230122/ichiran-230122.pgdump"
     shm_size: "1gb"
     environment:
+      PGUSER: postgres
       POSTGRES_PASSWORD: "password"
       PGDATA: "/var/lib/postgresql/data/pgdata"
     volumes:
       - ${PWD}/docker/pgdata:/var/lib/postgresql/data
 
   main:
+    ports:
+      - 5001:5001/tcp
     image: ruiisuuu/ichiran_main
+    depends_on: 
+      pg:
+        condition: service_healthy
     x-ecs:
       EnableExecuteCommand: true
     x-network:
-      x-cloudmap: PrivateNamespace
+      x-cloudmap: private-namespace
     build:
       dockerfile: ./docker/sbcl-dockerfile
       context: .

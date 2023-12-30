@@ -10,5 +10,6 @@
 
 (defun start ()
   (clack:clackup (lambda (env) (funcall 'handler env)) 
-  :port 5003
+  :address "0.0.0.0"
+  :port 5001
   :use-thread nil))
