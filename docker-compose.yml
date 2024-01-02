@@ -42,8 +42,11 @@ services:
     x-network:
       x-cloudmap: private-namespace
       Ingress:
-        Services:
-          - Name: main
+        Ingress:
+          ExtSources:
+            - IPv4: 0.0.0.0/0
+              Name: Any
+              Description: Any
     build:
       dockerfile: ./docker/postgres-dockerfile
       context: .
@@ -61,6 +64,11 @@ services:
     ports:
       - 5001:5001/tcp
     image: ruiisuuu/ichiran_main
+    depends_on:
+      - pg
+    environment:
+      LIMIT: 1
+      PORT: 5001
     x-ecs:
       EnableExecuteCommand: true
     x-network:
