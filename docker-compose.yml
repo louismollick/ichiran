@@ -42,11 +42,10 @@ services:
     x-network:
       x-cloudmap: private-namespace
       Ingress:
-        Ingress:
-          ExtSources:
-            - IPv4: 0.0.0.0/0
-              Name: Any
-              Description: Any
+        ExtSources:
+          - IPv4: 0.0.0.0/0
+            Name: Any
+            Description: Any
     build:
       dockerfile: ./docker/postgres-dockerfile
       context: .
