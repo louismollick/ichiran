@@ -14,6 +14,8 @@ x-elbv2:
     Properties:
       Scheme: internet-facing
       Type: application
+      LoadBalancerAttributes:
+        idle_timeout.timeout_seconds: "4000"
     MacroParameters:
       Ingress:
         ExtSources:
