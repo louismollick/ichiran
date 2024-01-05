@@ -11,10 +11,13 @@
  (declare (ignore env))
  (handler-case 
   (destructuring-bind (&key path-info &allow-other-keys) env
-   (let ((input (subseq path-info 1))) ;; remove leading "/" from path
-    `(200 nil (,(jsown:to-json (romanize* input :limit (parse-integer (uiop:getenv "LIMIT"))))))))
+   (format t "New request: ~A~%" path-info)
+   (let* ((input (subseq path-info 1)) ;; remove leading "/" from path
+          (result (jsown:to-json (romanize* input :limit (parse-integer (uiop:getenv "LIMIT")))))) 
+      (format t "Done with request: ~A~%" path-info)
+     `(200 nil (,result))))
   (error (c)
-   `(400 nil (,(format nil "ERROR: ~a~%" c))))))
+   `(400 nil (,(format nil "ERROR: ~A~%" c))))))
     
 (defun start ()
  (clack:clackup (lambda (env) (funcall 'handler env)) 
