@@ -1,9 +1,10 @@
 # Ichiran-AWS-HTTP-Server
 
 Prereq: 
-1. Configure a AWS Access ID / Secret with a IAM user that has Admin access: https://www.msp360.com/resources/blog/how-to-find-your-aws-access-key-id-and-secret-access-key/ 
-2. Run `aws configure` to configure your AWS ~/.aws/credentials https://docs.aws.amazon.com/cli/latest/userguide/cli-configure-files.html#cli-configure-files-methods
-3. If the `ruiisuuu/ichiran_[main/pg]` Docker images don't exist, you might need to build ichiran containers locally and push to DockerHub: `docker login`, `docker compose build`, `docker compose push`. You'll then need to replace `ruiisuuu/ichiran_[main/pg]` with `<your_docker_id>/ichiran_[main/pg]` in `docker-compose.yml`.
+1. `pip install ecs-composex --user`
+2. Configure a AWS Access ID / Secret with a IAM user that has Admin access: https://www.msp360.com/resources/blog/how-to-find-your-aws-access-key-id-and-secret-access-key/ 
+3. Run `aws configure` to configure your AWS ~/.aws/credentials https://docs.aws.amazon.com/cli/latest/userguide/cli-configure-files.html#cli-configure-files-methods
+4. If the `ruiisuuu/ichiran_[main/pg]` Docker images don't exist, you might need to build ichiran containers locally and push to DockerHub: `docker login`, `docker compose build`, `docker compose push`. You'll then need to replace `ruiisuuu/ichiran_[main/pg]` with `<your_docker_id>/ichiran_[main/pg]` in `docker-compose.yml`.
 
 Deploy:  
 To deploy to AWS Fargate and be accessible over HTTP, just run: `ecs-compose-x up -f docker-compose.yml -n ichiran`
