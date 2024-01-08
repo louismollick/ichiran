@@ -1,26 +1,32 @@
-FROM clfoundation/sbcl:latest
+FROM lambci/lambda:build-python3.8
 
-RUN apt update && apt -y install locales
-RUN echo "LC_ALL=en_US.UTF-8" >> /etc/environment
-RUN echo "en_US.UTF-8 UTF-8" >> /etc/locale.gen
-RUN echo "LANG=en_US.UTF-8" > /etc/locale.conf
-RUN locale-gen en_US.UTF-8
-ENV LANG en_US.UTF-8
-ENV LANGUAGE en_US:en
-ENV LC_ALL en_US.UTF-8
+RUN yum update -y
+RUN yum install -y openssl11-libs
+ENV PYTHON=python2 
+RUN amazon-linux-extras enable postgresql14
+RUN yum install -y postgresql
+RUN yum install -y wget
+RUN yum install -y libzstd-devel
 
-RUN    DEBIAN_FRONTEND=noninteractive \
-       apt-get update \
-    && apt-get install -y wget postgresql-client \
-    && rm -rf /var/lib/apt/lists/*
+ARG SBCL_VERSION=1.5.5
+
+RUN curl -s -f -O -L http://prdownloads.sourceforge.net/sbcl/sbcl-$SBCL_VERSION-x86-64-linux-binary.tar.bz2 \
+  && bzip2 -cd sbcl-$SBCL_VERSION-x86-64-linux-binary.tar.bz2 | tar xvf - \
+  && cd sbcl-$SBCL_VERSION-x86-64-linux \
+  && sh install.sh \
+  && rm -rf sbcl-$SBCL_VERSION-x86-64-linux sbcl-$SBCL_VERSION-x86-64-linux-binary.tar.bz2
+
+RUN wget http://prdownloads.sourceforge.net/sbcl/sbcl-$SBCL_VERSION-source.tar.bz2 \
+ && bzip2 -cd sbcl-$SBCL_VERSION-source.tar.bz2 | tar xvf - \
+ && cd sbcl-$SBCL_VERSION && ./make.sh --fancy && ./install.sh
 
 # quicklisp
 WORKDIR /root
 RUN wget https://beta.quicklisp.org/quicklisp.lisp
 RUN sbcl --load quicklisp.lisp --non-interactive \
-         --eval "(quicklisp-quickstart:install)" \
-         --eval "(ql-util:without-prompting (ql:add-to-init-file))" \
-         --eval "(sb-ext:quit)"
+  --eval "(quicklisp-quickstart:install)" \
+  --eval "(ql-util:without-prompting (ql:add-to-init-file))" \
+  --eval "(sb-ext:quit)"
 
 # ichiran
 WORKDIR /root

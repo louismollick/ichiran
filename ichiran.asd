@@ -50,7 +50,8 @@
   :depends-on (#:ichiran
                #:unix-opts
                )
-  :build-operation "program-op"
+  :defsystem-depends-on (:deploy)
+  :build-operation "deploy-op"
   :build-pathname "ichiran-cli"
   :entry-point "ichiran/cli::main"
   :components ((:file "cli")))
