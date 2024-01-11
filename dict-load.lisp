@@ -209,6 +209,12 @@
         (loader-opts-length (length loader-opts)) ;;([loader-name] row-def row-key value-form)
         loader-name
         (row-count-var (gensym "ROW"))
+        ;; Read the CSV files at compile time so they can be used in loader function closures at runtime 
+        (csv-file-content (cl-csv:read-csv
+                                   (if relative
+                                      `(asdf:system-relative-pathname ,relative ,filename)
+                                      `(merge-pathnames *jmdict-data* ,filename))
+                                   :separator #\Tab :skip-first-p skip-first))
         )
     (assert (member loader-opts-length '(3 4)))
     (setf loader-name
@@ -219,11 +225,7 @@
       (push
        `(defun ,loader-name ()
           (setf ,hash-name (make-hash-table :test 'equal))
-          (loop :for ,row-def :in (cl-csv:read-csv
-                                   ,(if relative
-                                      `(asdf:system-relative-pathname ,relative ,filename)
-                                      `(merge-pathnames *jmdict-data* ,filename))
-                                   :separator #\Tab :skip-first-p ,skip-first)
+          (loop :for ,row-def :in ,csv-file-content
              :for ,row-count-var :from 0
              :do (setf (gethash ,row-key-form ,hash-name) ,value-form))
           ,(when errata-fn `(funcall ,errata-fn ,hash-name)))
