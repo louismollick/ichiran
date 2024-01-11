@@ -1,24 +1,28 @@
-FROM lambci/lambda:build-python3.8
+FROM amazonlinux:2
 
-RUN yum update -y
-RUN yum install -y openssl11-libs
 ENV PYTHON=python2 
 RUN amazon-linux-extras enable postgresql14
-RUN yum install -y postgresql
-RUN yum install -y wget
-RUN yum install -y libzstd-devel
+RUN yum install -y zip bzip2 tar make gcc postgresql wget git zlib-devel glibc-locale-source glibc-langpack-en \
+  && rm -rf /var/cache/yum/* \
+  && yum clean all
 
-ARG SBCL_VERSION=1.5.5
+RUN localedef -c -f UTF-8 -i en_US en_US.UTF-8
+ENV LC_ALL=en_US.UTF-8
 
-RUN curl -s -f -O -L http://prdownloads.sourceforge.net/sbcl/sbcl-$SBCL_VERSION-x86-64-linux-binary.tar.bz2 \
-  && bzip2 -cd sbcl-$SBCL_VERSION-x86-64-linux-binary.tar.bz2 | tar xvf - \
-  && cd sbcl-$SBCL_VERSION-x86-64-linux \
+# Install this SBCL version (which supports GLIBC 2.26) to compile a newer version of SBCL from source
+ARG SBCL_COMPILING_VERSION=1.5.5
+RUN curl -s -f -O -L http://prdownloads.sourceforge.net/sbcl/sbcl-$SBCL_COMPILING_VERSION-x86-64-linux-binary.tar.bz2 \
+  && bzip2 -cd sbcl-$SBCL_COMPILING_VERSION-x86-64-linux-binary.tar.bz2 | tar xvf - \
+  && cd sbcl-$SBCL_COMPILING_VERSION-x86-64-linux \
   && sh install.sh \
-  && rm -rf sbcl-$SBCL_VERSION-x86-64-linux sbcl-$SBCL_VERSION-x86-64-linux-binary.tar.bz2
+  && rm -rf sbcl-$SBCL_COMPILING_VERSION-x86-64-linux sbcl-$SBCL_COMPILING_VERSION-x86-64-linux-binary.tar.bz2
 
+# Compile and install a new SBCL version from source, so we can compile with --with-sb-core-compression
+# I use 2.2.5 since 2.2.6>= would require libzstd
+ARG SBCL_VERSION=2.2.5
 RUN wget http://prdownloads.sourceforge.net/sbcl/sbcl-$SBCL_VERSION-source.tar.bz2 \
- && bzip2 -cd sbcl-$SBCL_VERSION-source.tar.bz2 | tar xvf - \
- && cd sbcl-$SBCL_VERSION && ./make.sh --fancy && ./install.sh
+  && bzip2 -cd sbcl-$SBCL_VERSION-source.tar.bz2 | tar xvf - \
+  && cd sbcl-$SBCL_VERSION && ./make.sh --with-sb-core-compression && ./install.sh
 
 # quicklisp
 WORKDIR /root
@@ -34,7 +38,10 @@ RUN     git clone https://gitlab.com/yamagoya/jmdictdb.git
 COPY    ./  /root/quicklisp/local-projects/ichiran/
 WORKDIR /root/quicklisp/local-projects/ichiran
 RUN     cp docker/settings.lisp settings.lisp
-RUN     sbcl --non-interactive --eval "(ql:quickload :ichiran)"
+RUN     sbcl --non-interactive 	--eval "(ql:quickload '#:cl+ssl/config)" \
+	--eval "(cl+ssl/config:define-libssl-path \"/usr/lib64/libssl.so.1.0.2k\")" \
+	--eval "(cl+ssl/config:define-libcrypto-path \"/usr/lib64/libcrypto.so.1.0.2k\")" \
+  --eval "(ql:quickload :ichiran)"
 
 ENV PATH=/root/quicklisp/local-projects/ichiran/docker/ichiran-scripts:$PATH
 

@@ -1,7 +1,10 @@
 #!/bin/bash
 
 set -e
-sbcl --non-interactive --eval "(ql:quickload :ichiran)" \
+sbcl --non-interactive --eval "(ql:quickload '#:cl+ssl/config)" \
+                       --eval "(cl+ssl/config:define-libssl-path \"/usr/lib64/libssl.so.1.0.2k\")" \
+                       --eval "(cl+ssl/config:define-libcrypto-path \"/usr/lib64/libcrypto.so.1.0.2k\")" \
+                       --eval "(ql:quickload :ichiran)" \
                        --eval "(ichiran/mnt:add-errata)" \
                        --eval "(in-package :ichiran/all)" \
                        --eval "(init-all-caches)" \
