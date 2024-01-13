@@ -1,143 +1,65 @@
-# Ichiran
+# Ichiran-on-AWS
 
-Ichiran is a collection of tools for working with text in Japanese language. It contains experimental segmenting and romanization algorithms and uses open source [JMdictDB](http://edrdg.org/~smg/) dictionary database to display meanings of words.
+This repo makes small changes to the Japanese linguistic tool [`ichiran-cli`](https://github.com/tshatrov/ichiran) can be compiled for AWS Linux 2 (e.g, used by AWS Lambda).
+`ichiran-cli` also requires a Postgres database to work (and some DB setup is done during `ichiran-cli` compilation time).
+In the below instructions I use Supabase but any remote Postgres DB could work (your own VPS, AWS RDS, etc.)
 
-The web interface is under development right now. You can try it at [ichi.moe](http://ichi.moe).
+## Setup instructions
 
-## Installation
+1. Clone this repo `git clone https://github.com/louismollick/ichiran-on-AWS.git`.
 
-**!!!NEW!!!** There's now a [blog post](https://readevalprint.tumblr.com/post/639359547843215360/ichiranhome-2021-the-ultimate-guide) which contains detailed instructions how to get Ichiran running on Linux and Windows. It also describes how to use the new `ichiran-cli` command line interface!
+2. Create your [Supabase](https://supabase.com/) (or other) Postgres database. Go to Settings > Database:
 
-1. Download JMDict data from [here](https://gitlab.com/yamagoya/jmdictdb/-/tree/master/jmdictdb/data). If you want to initialize database from scratch download [JMDict](ftp://ftp.monash.edu.au/pub/nihongo/JMdict.gz), and optionally [kanjidic2.xml](http://www.csse.monash.edu.au/~jwb/kanjidic2/kanjidic2.xml.gz) to use ichiran/kanji functionality.
-2. Create a settings.lisp file based on the provided settings.lisp.template file with the correct paths to the abovementioned files and the database connection parameters.
-3. The code can be loaded as a regular ASDF system. Use quicklisp to easily install all the dependencies.
-4. - Easy mode: Use database dump from [the release page](https://github.com/tshatrov/ichiran/releases) to create a suitable database. Make sure `settings.lisp` contains the correct connection parameters. Use `(ichiran/maintenance:add-errata)` to make database up to date.
-   - Hard mode: Use `(ichiran/maintenance:full-init)` to completely initialize the database. Use `(ichiran/maintenance:load-jmdict)` followed by `(ichiran/maintenance:load-best-readings)` to initialize only `ichiran/dict` and not `ichiran/kanji`. Either way, this will take a few hours or so.
-5. Use `(ichiran/test:run-all-tests)` to check that the installation satisfies the tests.
-6. Before using any word segmenting functionality, run `(ichiran/dict:init-suffixes t)` to create a suffix cache, which will improve the quality of segmentation.
+   a. copy your database hostname and password  
+   b. download the SSL certificate (e.g, `prod-ca-2021.crt`)
 
-## Dockerized version
+3. Set the `PGHOST` and `ICHIRAN_CONNECTION` env variables in `docker-compose.yml` with your host & password values from above.
 
-Build (executed from the root of this repo):
+   a. if your database name is not `postgres`, change the first argument to match your default database name  
+   b. you can find all the connection options in the (`postmodern` LISP package)[https://marijnhaverbeke.nl/postmodern/] docs.
 
-```
-docker compose build
-```
+4. Download the `jmdict-070124.pgdump` from the most recent `ichiran` release: https://github.com/tshatrov/ichiran/releases/download/ichiran-240107/jmdict-070124.pgdump (any version is fine)
 
-Start containers (this will take longer for the first time, because the db will get imported from the dump here, and other ichiran initializations will also get done here):
+5. Run the following command to transform the `pgdump` to an SQL file. This is necessary to remove the hardcoded `ja_JP.UTF-8` locale/encoding from the `pgdump` file, since [Supabase's postgres only supports `C.UTF-8`](https://github.com/supabase/cli/pull/834/files).
+   I have not yet encountered any issues with this setup, but ymmv.
 
 ```
-docker compose up
+`pg_restore --file=- ~/jmdict-070124.pgdump > ~/jmdict.sql`
 ```
 
-This will likely take several minutes, and may print a couple of warnings about pre-existing tables, which are safe to ignore. You may monitor the size of the database in another terminal via `du -h -d0 docker/pgdata` as it grows to 4+ GB. Eventually, the database will be fully restored and you may proceed.
+6. Run `export PGPASSWORD=<password>` copied previously.
 
-If there were errors while importing db, or you want to import a new database you need to delete postgres data, so the postgres docker initdb scripts get called (if the folder is not empty it won't get called), and after this you can call `docker compose up` again:
-
-```
-sudo rm -rf docker/pgdata
-```
-
-Test suite:
+7. Replace with <host> value and run the following command to connect and load data into your DB.
 
 ```
-$ docker exec -it ichiran-main-1 test-suite
-This is SBCL 2.2.4, an implementation of ANSI Common Lisp.
-More information about SBCL is available at <http://www.sbcl.org/>.
-
-SBCL is free software, provided as is, with absolutely no warranty.
-It is mostly in the public domain; some portions are provided under
-BSD-style licenses.  See the CREDITS and COPYING files in the
-distribution for more information.
-......................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................
-Unit Test Summary
- | 748 assertions total
- | 748 passed
- | 0 failed
- | 0 execution errors
- | 0 missing tests
+psql -h <host> "dbname=postgres user=postgres sslmode=verify-full sslrootcert=~/prod-ca-2021.crt" < ~/jmdict.sql
 ```
 
-Enter the sbcl interpreter (with ichiran already initialized):
+8. When this finishes, you can now start compiling `ichiran-cli`. Let it run until you see `All set, awaiting commands.` printed to the console:
 
 ```
-$ docker exec -it ichiran-main-1 ichiran-sbcl
-This is SBCL 2.2.4, an implementation of ANSI Common Lisp.
-More information about SBCL is available at <http://www.sbcl.org/>.
-
-SBCL is free software, provided as is, with absolutely no warranty.
-It is mostly in the public domain; some portions are provided under
-BSD-style licenses.  See the CREDITS and COPYING files in the
-distribution for more information.
-* (romanize "一覧は最高だぞ" :with-info t)
-"ichiran wa saikō da zo"
-(("ichiran" . "一覧 【いちらん】
-1. [n,vs] look; glance; sight; inspection
-2. [n] summary; list; table; catalog; catalogue")
- ("wa" . "は
-1. [prt] 《pronounced わ in modern Japanese》 indicates sentence topic
-2. [prt] indicates contrast with another option (stated or unstated)
-3. [prt] adds emphasis")
- ("saikō" . "最高 【さいこう】
-1. [adj-no,adj-na,n] best; supreme; wonderful; finest
-2. [n,adj-na,adj-no] highest; maximum; most; uppermost; supreme")
- ("da" . "だ
-1. [cop,cop-da] 《plain copula》 be; is
-2. [aux-v] 《た after certain verb forms; indicates past or completed action》 did; (have) done
-3. [aux-v] 《indicates light imperative》 please; do")
- ("zo" . "ぞ
-1. [prt] 《used at sentence end》 adds force or indicates command"))
-* (ichiran:romanize "一覧は最高だぞ" :with-info t)
-"ichiran wa saikō da zo"
-(("ichiran" . "一覧 【いちらん】
-1. [n,vs] look; glance; sight; inspection
-2. [n] summary; list; table; catalog; catalogue")
- ("wa" . "は
-1. [prt] 《pronounced わ in modern Japanese》 indicates sentence topic
-2. [prt] indicates contrast with another option (stated or unstated)
-3. [prt] adds emphasis")
- ("saikō" . "最高 【さいこう】
-1. [adj-no,adj-na,n] best; supreme; wonderful; finest
-2. [n,adj-na,adj-no] highest; maximum; most; uppermost; supreme")
- ("da" . "だ
-1. [cop,cop-da] 《plain copula》 be; is
-2. [aux-v] 《た after certain verb forms; indicates past or completed action》 did; (have) done
-3. [aux-v] 《indicates light imperative》 please; do")
- ("zo" . "ぞ
-1. [prt] 《used at sentence end》 adds force or indicates command"))
-*
+docker compose up --build
 ```
 
-Ichiran cli:
+9. Run `docker ps` to get the container ID.
+
+10. Then copy the copiled executable from the docker container to your computer:
 
 ```
-$ docker exec -it ichiran-main-1 ichiran-cli -i "一覧は最高だぞ"
-ichiran wa saikō da zo
-
-* ichiran  一覧 【いちらん】
-1. [n,vs] look; glance; sight; inspection
-2. [n] summary; list; table; catalog; catalogue
-
-* wa  は
-1. [prt] 《pronounced わ in modern Japanese》 indicates sentence topic
-2. [prt] indicates contrast with another option (stated or unstated)
-3. [prt] adds emphasis
-
-* saikō  最高 【さいこう】
-1. [adj-no,adj-na,n] best; supreme; wonderful; finest
-2. [n,adj-na,adj-no] highest; maximum; most; uppermost; supreme
-
-* da  だ
-1. [cop,cop-da] 《plain copula》 be; is
-2. [aux-v] 《た after certain verb forms; indicates past or completed action》 did; (have) done
-3. [aux-v] 《indicates light imperative》 please; do
-
-* zo  ぞ
-1. [prt] 《used at sentence end》 adds force or indicates command
+docker cp <container ID>:/root/quicklisp/local-projects/ichiran/ichiran-cli ~/
 ```
 
-## Documentation
+11. Finally when running in AWS Lambda (or any hosting solution built on AWS Lambda e.g Vercel), set the `ICHIRAN_CONNECTION` environment variable. You can then run this `ichiran-cli` executable as a subprocess in your app:
 
-There is no documentation yet. Any API is considered unstable at this point.
+```
+const words = "心の膜が剥がれ落ちてゆく";
+const cmd = path.join(process.cwd(), "src/ichiran-cli");
+const output = childProcess.spawnSync(cmd, ["-f", words], {
+  encoding: "utf8",
+});
+console.log(output.stdout)
+```
 
-The basic functionality is `(ichiran:romanize "一覧は最高だぞ" :with-info t)`, but feel free to explore further.
+```
+[[[[["shin/kokoro",{"alternative":[{"reading":"\u5FC3 \u3010\u3057\u3093\u3011","text":"\u5FC3","kana":"\u3057\u3093","score":16,"seq":1595125,"gloss":[{"pos":"[n]","gloss":"heart; mind; spirit; vitality; inner strength"},{"pos":"[n]","gloss":"bottom of one's heart; core (of one's character); nature"},{"pos":"[n]","gloss":"centre; center; core; heart","info":"usu. written as \u82AF"},{"pos":"[n]","gloss":"heart (organ)"},{"pos":"[n]","gloss":"Chinese \"Heart\" constellation (one of the 28 mansions)"},{"pos":"[n]","gloss":"friend"}],"conj":[]},{"reading":"\u5FC3 \u3010\u3053\u3053\u308D\u3011","text":"\u5FC3","kana":"\u3053\u3053\u308D","score":16,"seq":1360480,"gloss":[{"pos":"[n]","gloss":"mind; heart; spirit"},{"pos":"[n]","gloss":"the meaning of a phrase (riddle, etc.)"}],"conj":[]}]},[]],["no",{"reading":"\u306E","text":"\u306E","kana":"\u306E","score":11,"seq":1469800,"gloss":[{"pos":"[prt]","gloss":"indicates possessive","info":"occasionally \u3093, orig. written \u4E43 or \u4E4B"},{"pos":"[prt]","gloss":"nominalizes verbs and adjectives"},{"pos":"[prt]","gloss":"substitutes for \"ga\" in subordinate phrases"},{"pos":"[prt]","gloss":"(at sentence-end, falling tone) indicates a confident conclusion","info":"often \u3093"},{"pos":"[prt]","gloss":"(at sentence-end) indicates emotional emphasis"},{"pos":"[prt]","gloss":"(at sentence-end, rising tone) indicates question"}],"conj":[]},[]],["maku",{"reading":"\u819C \u3010\u307E\u304F\u3011","text":"\u819C","kana":"\u307E\u304F","score":16,"seq":1524850,"gloss":[{"pos":"[n]","gloss":"membrane; film"}],"conj":[]},[]],["ga",{"reading":"\u304C","text":"\u304C","kana":"\u304C","score":11,"seq":2028930,"gloss":[{"pos":"[prt]","gloss":"indicates sentence subject (occasionally object)"},{"pos":"[prt]","gloss":"indicates possessive (esp. in literary expressions)"},{"pos":"[conj]","gloss":"but; however; still; and"},{"pos":"[conj]","gloss":"regardless of; whether (or not)","info":"after the volitional form of a verb"}],"conj":[]},[]],["hagareochite",{"reading":"\u5265\u304C\u308C\u843D\u3061\u3066 \u3010\u306F\u304C\u308C\u304A\u3061\u3066\u3011","text":"\u5265\u304C\u308C\u843D\u3061\u3066","kana":"\u306F\u304C\u308C\u304A\u3061\u3066","score":1001,"seq":10097728,"conj":[{"prop":[{"pos":"v1","type":[]}],"reading":"\u5265\u304C\u308C\u843D\u3061\u308B \u3010\u306F\u304C\u308C\u304A\u3061\u308B\u3011","gloss":[{"pos":"[vi,v1]","gloss":"to peel off and fall; to flake away"}],"readok":true}]},[]],["yuku",{"reading":"\u3086\u304F","text":"\u3086\u304F","kana":"\u3086\u304F","score":12,"seq":1578850,"gloss":[{"pos":"[v5k-s,vi]","gloss":"to go; to move (towards); to head (towards); to leave (for)"},{"pos":"[v5k-s,vi]","gloss":"to move through; to travel across; to walk along (e.g. a road)"},{"pos":"[v5k-s,vi]","gloss":"to go (well, badly, etc.); to proceed; to turn out; to get along"},{"pos":"[v5k-s,vi]","gloss":"to do (in a particular way); to go (with; a choice); to try","info":"oft. as \u3067\u301C"},{"pos":"[v5k-s,vi]","gloss":"to pass (of time, seasons, etc.); to go by"},{"pos":"[v5k-s,vi]","gloss":"to stream; to flow"},{"pos":"[v5k-s,vi]","gloss":"to die; to pass away","info":"usu. written as \u901D\u304F"},{"pos":"[v5k-s,vi]","gloss":"to reach (a stage, extent, age, etc.); to get to; to go (so far as ...)"},{"pos":"[v5k-s,vi]","gloss":"to reach (of information, instructions, wind, etc.); to arrive"},{"pos":"[aux-v,v5k-s]","gloss":"to continue ...; to go on ...; to (progress) steadily; to gradually ...; to progressively ...","info":"after the -te form of a verb; \u3044 sometimes omitted in casual speech"},{"pos":"[v5k-s,vi]","gloss":"to have an orgasm; to come; to cum","info":"oft. written as \u30A4\u30AF"},{"pos":"[vi,v5k-s]","gloss":"to trip; to get high; to have a drug-induced hallucination"}],"conj":[]},[]]],1095]]]
+```

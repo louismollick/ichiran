@@ -2,7 +2,7 @@
 
 echo "Checking postgres server status..."
 while : ; do
-    pg_isready -h pg > /dev/null && break;
+    pg_isready > /dev/null && break;
     sleep 1;
 done
 

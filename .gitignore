@@ -4,3 +4,4 @@ settings.lisp
 !docker/settings.lisp
 ichiran-cli.exe
 docker/pgdata/
+prod-ca-2021.crt
