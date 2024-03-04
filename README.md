@@ -1,17 +1,17 @@
 # Ichiran-on-AWS
 
-This repo makes small changes to the Japanese linguistic tool [`ichiran-cli`](https://github.com/tshatrov/ichiran) can be compiled for AWS Linux 2 (e.g, used by AWS Lambda).
-`ichiran-cli` also requires a Postgres database to work (and some DB setup is done during `ichiran-cli` compilation time).
-In the below instructions I use Supabase but any remote Postgres DB could work (your own VPS, AWS RDS, etc.)
+This repo makes small changes to the Japanese linguistic tool [`ichiran-cli`](https://github.com/tshatrov/ichiran) so it can be compiled to an executable for AWS Linux 2 (e.g, used by AWS Lambda).
+Note that `ichiran-cli` requires a Postgres database to work (and some DB setup is done during `ichiran-cli` compilation time).
+In the below instructions I use AWS RDS but any remote Postgres DB could work:
 
 ## Setup instructions
 
 1. Clone this repo `git clone https://github.com/louismollick/ichiran-on-AWS.git`.
 
-2. Create your [Supabase](https://supabase.com/) (or other) Postgres database. Go to Settings > Database:
-
-   a. copy your database hostname and password  
-   b. download the SSL certificate (e.g, `prod-ca-2021.crt`)
+2. Create your [AWS RDS](https://aws.amazon.com/rds/) Postgres database. 
+    a. Select "Publically accessible" "Yes", and uncheck "Encryption" in the DB creation wizard
+    b. You'll also need to create a publically accessible security group per https://stackoverflow.com/a/52346331 and also turn off force_ssl https://stackoverflow.com/a/77787495
+    c. Finally copy your database hostname and password.
 
 3. Set the `PGHOST` and `ICHIRAN_CONNECTION` env variables in `docker-compose.yml` with your host & password values from above.
 
@@ -20,19 +20,18 @@ In the below instructions I use Supabase but any remote Postgres DB could work (
 
 4. Download the `jmdict-070124.pgdump` from the most recent `ichiran` release: https://github.com/tshatrov/ichiran/releases/download/ichiran-240107/jmdict-070124.pgdump (any version is fine)
 
-5. Run the following command to transform the `pgdump` to an SQL file. This is necessary to remove the hardcoded `ja_JP.UTF-8` locale/encoding from the `pgdump` file, since [Supabase's postgres only supports `C.UTF-8`](https://github.com/supabase/cli/pull/834/files).
-   I have not yet encountered any issues with this setup, but ymmv.
+5. Run the following command to transform the `pgdump` to an SQL file. This is necessary to remove the hardcoded `ja_JP.UTF-8` locale/encoding from the `pgdump` file. I have not yet encountered any issues with this setup, but ymmv.
 
 ```
-`pg_restore --file=- ~/jmdict-070124.pgdump > ~/jmdict.sql`
+pg_restore --file=- ~/jmdict-070124.pgdump > ~/jmdict.sql
 ```
 
 6. Run `export PGPASSWORD=<password>` copied previously.
 
-7. Replace with <host> value and run the following command to connect and load data into your DB.
+7. Replace with <host> (e.g, xxxx.us-east-1.rds.amazonaws.com) value and run the following command to connect and load data into your DB.
 
 ```
-psql -h <host> "dbname=postgres user=postgres sslmode=verify-full sslrootcert=~/prod-ca-2021.crt" < ~/jmdict.sql
+psql -h <host> --username=postgres --dbname=postgres < ~/jmdict.sql
 ```
 
 8. When this finishes, you can now start compiling `ichiran-cli`. Let it run until you see `All set, awaiting commands.` printed to the console:
