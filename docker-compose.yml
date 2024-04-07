@@ -18,3 +18,5 @@ services:
     build:
       dockerfile: ./docker/sbcl-dockerfile
       context: .
+    ports:
+      - "3000:3000"

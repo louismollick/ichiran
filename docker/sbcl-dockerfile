@@ -10,17 +10,28 @@ ENV LANGUAGE en_US:en
 ENV LC_ALL en_US.UTF-8
 
 RUN    DEBIAN_FRONTEND=noninteractive \
-       apt-get update \
-    && apt-get install -y wget postgresql-client \
-    && rm -rf /var/lib/apt/lists/*
+  apt-get update \
+  && apt-get install -y wget postgresql-client \
+  && rm -rf /var/lib/apt/lists/*
 
 # quicklisp
 WORKDIR /root
 RUN wget https://beta.quicklisp.org/quicklisp.lisp
 RUN sbcl --load quicklisp.lisp --non-interactive \
-         --eval "(quicklisp-quickstart:install)" \
-         --eval "(ql-util:without-prompting (ql:add-to-init-file))" \
-         --eval "(sb-ext:quit)"
+  --eval "(quicklisp-quickstart:install)" \
+  --eval "(ql-util:without-prompting (ql:add-to-init-file))" \
+  --eval "(sb-ext:quit)"
+
+# node
+RUN curl -fsSL https://deb.nodesource.com/setup_lts.x | bash -
+RUN apt-get install -y nodejs
+
+# http server
+WORKDIR /app
+COPY node-server/package*.json ./
+RUN npm install
+COPY node-server .
+RUN npm run build
 
 # ichiran
 WORKDIR /root
