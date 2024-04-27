@@ -2,6 +2,7 @@ version: "3"
 
 services:
   pg:
+    image: ghcr.io/louismollick/ichiran-postgres:latest
     build:
       dockerfile: ./docker/postgres-dockerfile
       context: .
@@ -15,6 +16,7 @@ services:
       - ${PWD}/docker/pgdata:/var/lib/postgresql/data
 
   main:
+    image: ghcr.io/louismollick/ichiran-http:latest
     build:
       dockerfile: ./docker/sbcl-dockerfile
       context: .
