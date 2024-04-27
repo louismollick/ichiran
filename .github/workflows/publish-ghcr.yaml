@@ -1,7 +1,6 @@
 name: Docker Image CI for GHCR
 
-on:
-  push
+on: push
 
 jobs:
   build_and_publish:
@@ -11,5 +10,5 @@ jobs:
       - name: Build and push the image
         run: |
           echo "${{ secrets.GH_PAT }}" | docker login --username louismollick --password-stdin ghcr.io
-          docker compose build .
+          docker compose build
           docker compose push
