@@ -13,6 +13,7 @@ app.use(cors());
 
 app.get("/:input", (request: Request, response: Response) => {
   const input = request.params.input.trim();
+  console.log(`Received input: ${input}`)
   if (!input) {
     const errorMessage = "Input is empty, sending failure.";
     console.error(errorMessage);
