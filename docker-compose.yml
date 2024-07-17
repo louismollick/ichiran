@@ -16,7 +16,7 @@ services:
       - ${PWD}/docker/pgdata:/var/lib/postgresql/data
 
   main:
-    image: ghcr.io/louismollick/ichiran-http:latest
+    image: ghcr.io/louismollick/ichiran:latest
     build:
       dockerfile: ./docker/sbcl-dockerfile
       context: .
