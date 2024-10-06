@@ -2,12 +2,12 @@
   "name": "ichiran-node-server",
   "version": "1.0.0",
   "description": "",
-  "main": "dist/index.js",
+  "main": "index.ts",
   "scripts": {
     "start": "node dist/index.js",
-    "dev": "npm run build && npm start",
-    "build": "npx tsc",
-    "format": "npx prettier . --write",
+    "dev": "nodemon index.ts",
+    "build": "tsc",
+    "format": "prettier . --write",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "keywords": [],
@@ -17,13 +17,14 @@
     "child_process": "^1.0.2",
     "cors": "^2.8.5",
     "dotenv": "^16.4.5",
-    "express": "^4.19.2",
+    "express": "^4.21.0",
     "helmet": "^7.1.0"
   },
   "devDependencies": {
     "@types/cors": "^2.8.17",
     "@types/dotenv": "^8.2.0",
     "@types/express": "^4.17.21",
+    "nodemon": "^3.1.7",
     "prettier": "3.2.5",
     "typescript": "^5.4.4"
   }
