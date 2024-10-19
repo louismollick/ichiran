@@ -188,4 +188,4 @@ fastify.get<VolumeSegmentationRequest>(
   },
 );
 
-await fastify.listen({ port: PORT, host: '0.0.0.0' }, () => console.log("Server running at PORT: ", PORT));
+await fastify.listen({ port: PORT }, () => console.log("Server running at PORT: ", PORT));
