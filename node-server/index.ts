@@ -1,21 +1,19 @@
-import Fastify, { RequestGenericInterface } from 'fastify'
-import helmet from '@fastify/helmet'
-import cors from '@fastify/cors'
-
+import express, { type Request, type Response } from "express";
 import childProcess from "child_process";
 import dotenv from "dotenv";
+import helmet from "helmet";
+import cors from "cors";
 import { promises as fs } from "fs";
 
 import type { MokuroResponse } from "./types/mokuro";
 import type { IchiranResponse } from "./types/ichiran";
 
 dotenv.config();
-const PORT = parseInt(process.env.PORT!) || 3000;
-const fastify = Fastify({
-  logger: true,
-});
-await fastify.register(helmet);
-await fastify.register(cors);
+const app = express();
+const PORT = process.env.PORT || 3000;
+
+app.use(helmet());
+app.use(cors());
 
 function parseError(error: unknown) {
   return JSON.stringify(error, Object.getOwnPropertyNames(error))
@@ -74,45 +72,36 @@ const segmentText = (input: string) => {
   return JSON.parse(result.stdout) as IchiranResponse;
 };
 
-fastify.get("/", (_, reply) => {
-  return reply.status(200).send("Hi!");
+app.get("/", (_: Request, response: Response) => {
+  return response.status(200).send("Hi!");
 });
 
-fastify.get("/health", (_, reply) => {
+app.get("/health", (_: Request, response: Response) => {
   console.log(`Beginning ichiran health test...`);
 
   try {
     doHealthCheck();
-    return reply.status(200).send("OK");
+    return response.status(200).send("OK");
   } catch (error) {
-    return reply.status(500).send(parseError(error));
+    return response.status(500).send(parseError(error));
   }
 });
 
-type SegmentationRequest = RequestGenericInterface & {
-  Params: { input: string };
-}
-
-fastify.get<SegmentationRequest>("/segment/:input", (request, reply) => {
-  const { input } = request.params;
+app.get("/segment/:input", (request: Request, response: Response) => {
+  const input = request.params.input.trim();
   console.log(`Beginning segmentation of input: ${input}`);
   if (!input) {
     const errorMessage = "Input is empty, sending failure.";
     console.error(errorMessage);
-    return reply.status(400).send(`Error: ${errorMessage}`);
+    return response.status(400).send(`Error: ${errorMessage}`);
   }
 
-  reply.status(200).send(segmentText(input));
+  response.status(200).json(segmentText(input));
 });
 
-type VolumeSegmentationRequest = RequestGenericInterface & {
-  Params: { mangaSlug: string, volumeNumber: string };
-  Querystring: { force?: boolean };
-}
-
-fastify.get<VolumeSegmentationRequest>(
+app.get(
   "/segment/:mangaSlug/:volumeNumber",
-  async (request, reply) => {
+  async (request: Request, response: Response) => {
     const { mangaSlug, volumeNumber } = request.params;
     const dirPath = `${process.cwd()}/shared/images/${mangaSlug}/jp-JP/_ocr/volume-${volumeNumber}`;
 
@@ -121,7 +110,7 @@ fastify.get<VolumeSegmentationRequest>(
     try {
       doHealthCheck();
     } catch (error) {
-      return reply.status(500).send(parseError(error));
+      return response.status(500).send(parseError(error));
     }
 
     const t0 = performance.now();
@@ -129,7 +118,7 @@ fastify.get<VolumeSegmentationRequest>(
     // Read each Mokuro OCR .json file in the directory, and for each speech bubble text call ichiran-cli, then save back to .json file
     const fileNames = await fs.readdir(dirPath);
     const forceResegmentation = request.query.force;
-    Promise.all(
+    await Promise.all(
       fileNames.map(async (fileName) => {
         const filePath = `${dirPath}/${fileName}`;
         console.info(`Reading ${filePath}...`);
@@ -179,13 +168,13 @@ fastify.get<VolumeSegmentationRequest>(
 
         console.log(`Done segmenting file ${filePath}!`);
       }),
-    ).then(() => {
-      const time = performance.now() - t0;
-      console.log(`Segmentation of directory took ${time} milliseconds.`);
-    });
+    );
 
-    return reply.status(200).send(`Started segmentation of directory path: ${dirPath}`);
+    const time = performance.now() - t0;
+    console.log(`Segmentation of directory took ${time} milliseconds.`);
+
+    return response.status(200).send("Done");
   },
 );
 
-await fastify.listen({ port: PORT }, () => console.log("Server running at PORT: ", PORT));
+app.listen(PORT, () => console.log("Server running at PORT: ", PORT));
