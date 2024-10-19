@@ -113,6 +113,8 @@ app.get(
       return response.status(500).send(parseError(error));
     }
 
+    const t0 = performance.now();
+
     // Read each Mokuro OCR .json file in the directory, and for each speech bubble text call ichiran-cli, then save back to .json file
     const fileNames = await fs.readdir(dirPath);
     const forceResegmentation = request.query.force;
@@ -167,6 +169,9 @@ app.get(
         console.log(`Done segmenting file ${filePath}!`);
       }),
     );
+
+    const time = performance.now() - t0;
+    console.log(`Segmentation of directory took ${time} milliseconds.`);
 
     return response.status(200).send("Done");
   },
