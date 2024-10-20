@@ -1,12 +1,12 @@
 import express, { type Request, type Response } from "express";
-import childProcess from "child_process";
 import dotenv from "dotenv";
 import helmet from "helmet";
 import cors from "cors";
 import { promises as fs } from "fs";
 
-import type { MokuroResponse } from "./types/mokuro";
-import type { IchiranResponse } from "./types/ichiran";
+import { parseError, safelyReadFile, safelyWriteFile } from "./lib/utils";
+import { doHealthCheck, segmentText } from "./lib/segmentation";
+import { getCommonWordsForKanji } from './lib/db';
 
 dotenv.config();
 const app = express();
@@ -14,63 +14,6 @@ const PORT = process.env.PORT || 3000;
 
 app.use(helmet());
 app.use(cors());
-
-function parseError(error: unknown) {
-  return JSON.stringify(error, Object.getOwnPropertyNames(error))
-}
-
-async function safelyReadOcrFile(filePath: string) {
-  try {
-    const ocrFile = await fs.readFile(filePath, "utf8");
-    return JSON.parse(ocrFile) as MokuroResponse;
-  } catch (error) {
-    console.log(
-      `Error during safelyReadOcrFile for filePath ${filePath}.\nError: ${parseError(error)}`,
-    );
-    return null;
-  }
-}
-
-async function safelyWriteOcrFile(filePath: string, content: string) {
-  try {
-    await fs.writeFile(filePath, content);
-    return true;
-  } catch (error) {
-    console.log(
-      `Error during safelyWriteOcrFile for filePath ${filePath}.\nError: ${parseError(error)}`,
-    );
-    return false;
-  }
-}
-
-const command = "ichiran-cli";
-
-// Verify ichiran-cli is alive and working
-const doHealthCheck = () => {
-  const result = childProcess.spawnSync(command, ["-h"], {
-    encoding: "utf8",
-  });
-
-  if (result.error || result.stderr) {
-    const message = `ichiran-cli not working as expected".\nError: ${result.error} ${result.stderr}`;
-    console.error(message);
-    throw new Error(message);
-  }
-};
-
-const segmentText = (input: string) => {
-  const result = childProcess.spawnSync(command, ["-f", input], {
-    encoding: "utf8",
-  });
-
-  if (result.error || result.stderr) {
-    const message = `Error during segmentation of input: "${input}".\nError: ${result.error} ${result.stderr}`;
-    console.error(message);
-    throw new Error(message);
-  }
-
-  return JSON.parse(result.stdout) as IchiranResponse;
-};
 
 app.get("/", (_: Request, response: Response) => {
   return response.status(200).send("Hi!");
@@ -99,6 +42,18 @@ app.get("/segment/:input", (request: Request, response: Response) => {
   response.status(200).json(segmentText(input));
 });
 
+app.get("/kanji/common-words/:input", (request: Request, response: Response) => {
+  const input = request.params.input.trim();
+  console.log(`Getting common-words for Kanji: ${input}`);
+  if (!input) {
+    const errorMessage = "Input is empty, sending failure.";
+    console.error(errorMessage);
+    return response.status(400).send(`Error: ${errorMessage}`);
+  }
+
+  response.status(200).json(getCommonWordsForKanji(input));
+});
+
 app.get(
   "/segment/:mangaSlug/:volumeNumber",
   async (request: Request, response: Response) => {
@@ -122,7 +77,7 @@ app.get(
       fileNames.map(async (fileName) => {
         const filePath = `${dirPath}/${fileName}`;
         console.info(`Reading ${filePath}...`);
-        const ocr = await safelyReadOcrFile(filePath);
+        const ocr = await safelyReadFile(filePath);
 
         if (!ocr) {
           console.error(
@@ -155,7 +110,7 @@ app.get(
           }),
         );
 
-        const writeSuccess = await safelyWriteOcrFile(
+        const writeSuccess = await safelyWriteFile(
           filePath,
           JSON.stringify(ocr),
         );
