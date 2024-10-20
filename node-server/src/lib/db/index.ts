@@ -1,7 +1,7 @@
 import { sql } from 'drizzle-orm';
-import { drizzle } from "drizzle-orm/postgres-js";
+import { drizzle } from 'drizzle-orm/node-postgres';
 
-const db = drizzle(process.env.DATABASE_URL || 'http://pg:5432');
+const db = drizzle(process.env.DATABASE_URL!);
 
 export async function getCommonWordsForKanji(kanji: string) {
   const result = await db.execute(sql`
