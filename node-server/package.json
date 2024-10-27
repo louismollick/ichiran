@@ -5,7 +5,10 @@
   "main": "index.ts",
   "scripts": {
     "start": "node dist/src/index.js",
-    "dev": "nodemon index.ts",
+    "dev": "nodemon src/index.ts",
+    "docker:local": "cd .. && docker-compose -f docker-compose.local.yml up -d",
+    "docker:rebuild": "cd .. && docker-compose -f docker-compose.local.yml up -d --no-deps --build main",
+    "docker:restart": "cd .. && docker-compose -f docker-compose.local.yml restart main",
     "build": "tsc",
     "format": "prettier . --write",
     "test": "echo \"Error: no test specified\" && exit 1"

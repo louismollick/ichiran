@@ -5,4 +5,4 @@ settings.lisp
 ichiran-cli
 ichiran-cli.exe
 docker/pgdata/
-node-server/shared
+docker/images/

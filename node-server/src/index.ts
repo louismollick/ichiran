@@ -6,7 +6,7 @@ import { promises as fs } from "fs";
 
 import { parseError, safelyReadFile, safelyWriteFile } from "./lib/utils";
 import { doHealthCheck, segmentText } from "./lib/segmentation";
-import { getCommonWordsForKanji } from './lib/db';
+import { getCommonWordsForKanji } from "./lib/db";
 
 dotenv.config();
 const app = express();
@@ -42,23 +42,31 @@ app.get("/segment/:input", (request: Request, response: Response) => {
   response.status(200).json(segmentText(input));
 });
 
-app.get("/kanji/common-words/:input", (request: Request, response: Response) => {
-  const input = request.params.input.trim();
-  console.log(`Getting common-words for Kanji: ${input}`);
-  if (!input) {
-    const errorMessage = "Input is empty, sending failure.";
-    console.error(errorMessage);
-    return response.status(400).send(`Error: ${errorMessage}`);
-  }
+app.get(
+  "/kanji/common-words/:input",
+  async (request: Request, response: Response) => {
+    const input = request.params.input.trim();
+    console.log(`Getting common-words for Kanji: ${input}`);
+    if (!input) {
+      const errorMessage = "Input is empty, sending failure.";
+      console.error(errorMessage);
+      return response.status(400).send(`Error: ${errorMessage}`);
+    }
 
-  response.status(200).json(getCommonWordsForKanji(input));
-});
+    try {
+      const result = await getCommonWordsForKanji(input);
+      response.status(200).json(result);
+    } catch (error) {
+      response.status(500).json(error);
+    }
+  },
+);
 
 app.get(
   "/segment/:mangaSlug/:volumeNumber",
   async (request: Request, response: Response) => {
     const { mangaSlug, volumeNumber } = request.params;
-    const dirPath = `${process.cwd()}/shared/images/${mangaSlug}/jp-JP/_ocr/volume-${volumeNumber}`;
+    const dirPath = `/app/images/${mangaSlug}/jp-JP/_ocr/volume-${volumeNumber}`;
 
     console.log(`Beginning segmentation of directory path: ${dirPath}`);
 

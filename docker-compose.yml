@@ -1,5 +1,3 @@
-version: "3"
-
 services:
   pg:
     image: ghcr.io/louismollick/ichiran-postgres:latest
@@ -8,19 +6,9 @@ services:
       context: .
       args:
         ICHIRAN_DB_URL: "https://github.com/tshatrov/ichiran/releases/download/ichiran-240107/jmdict-070124.pgdump"
-    shm_size: "1gb"
-    environment:
-      POSTGRES_PASSWORD: "password"
-      PGDATA: "/var/lib/postgresql/data/pgdata"
-    volumes:
-      - ${PWD}/docker/pgdata:/var/lib/postgresql/data
 
   main:
     image: ghcr.io/louismollick/ichiran-http:latest
     build:
       dockerfile: ./docker/sbcl-dockerfile
       context: .
-    ports:
-      - "3000:3000"
-    volumes:
-      - ${PWD}/shared:/app/shared
